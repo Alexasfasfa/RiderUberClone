@@ -23,4 +23,5 @@
     <string name="permission_required">Permission for location required</string>
     <string name="drivers_not_found">Drivers not found\n</string>
     <string name="key_not_found">Key not found</string>
+    <string name="api_key">AIzaSyDSYQOpx5KWQilelGSNJdideUwj53VxAKI</string>
 </resources>

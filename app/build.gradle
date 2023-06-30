@@ -38,6 +38,7 @@ android {
 }
 
 dependencies {
+    def r_latest_version = "2.9.0"
 
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -83,4 +84,10 @@ dependencies {
     // https://firebase.google.com/docs/firestore/solutions/geoqueries
     implementation 'com.firebase:geofire-android-common:3.2.0'
 
+    //Retrofit
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.squareup.retrofit2:retrofit:r_latest_version'
+    implementation 'com.squareup.retrofit2:converter-gson:2.1.0'
+    implementation 'com.squareup.retrofit2:converter-scalars:2.1.0'
+    implementation "com.github.akarnokd:rxjava3-retrofit-adapter:3.0.0"
 }
