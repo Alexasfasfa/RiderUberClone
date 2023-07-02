@@ -24,4 +24,7 @@
     <string name="drivers_not_found">Drivers not found\n</string>
     <string name="key_not_found">Key not found</string>
     <string name="api_key">AIzaSyDSYQOpx5KWQilelGSNJdideUwj53VxAKI</string>
+    <string name="welcome">Good afternoon</string>
+    <string name="choose_place">Choose a saved place</string>
+    <string name="city_name_not_found">City not found</string>
 </resources>

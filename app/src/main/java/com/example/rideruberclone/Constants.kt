@@ -9,12 +9,14 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
 import android.util.Log
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.example.rideruberclone.models.AnimationModel
 import com.example.rideruberclone.models.DriverGeoModel
 import com.example.rideruberclone.models.RiderModel
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
+import java.util.Calendar
 
 
 object Constants {
@@ -144,5 +146,16 @@ object Constants {
             poly.add(p)
         }
         return poly
+    }
+
+    fun setWelcomeMessage(textWelcome: TextView?) {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        if (hour >= 1 && hour <= 12) {
+            textWelcome?.text = StringBuilder("Good morning")
+        } else if (hour > 12 && hour <= 17) {
+            textWelcome?.text = java.lang.StringBuilder("Good afternoon")
+        } else {
+            textWelcome?.text = StringBuilder("Good evening")
+        }
     }
 }
