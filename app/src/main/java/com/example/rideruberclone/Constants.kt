@@ -158,4 +158,17 @@ object Constants {
             textWelcome?.text = StringBuilder("Good evening")
         }
     }
+
+    fun formatDuration(duration: String): CharSequence {
+        if (duration.contains("mins")) {
+            return duration.substring(0,duration.length -1)
+        }else {
+            return duration
+        }
+    }
+
+    fun formatAddress(startAddress: String): CharSequence {
+        val firstIndexCommma = startAddress.indexOf(" ")
+        return startAddress.substring(0,firstIndexCommma)
+    }
 }

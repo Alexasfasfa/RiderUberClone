@@ -27,4 +27,5 @@
     <string name="welcome">Good afternoon</string>
     <string name="choose_place">Choose a saved place</string>
     <string name="city_name_not_found">City not found</string>
+    <string name="title_activity_request_driver">RequestDriverActivity</string>
 </resources>

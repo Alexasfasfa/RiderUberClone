@@ -3,6 +3,7 @@ package com.example.rideruberclone.activities.ui.home
 import android.Manifest
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.location.Address
@@ -27,6 +28,7 @@ import com.example.rideruberclone.Constants
 import com.example.rideruberclone.R
 import com.example.rideruberclone.Remote.GoogleAPI
 import com.example.rideruberclone.Remote.RetrofitClient
+import com.example.rideruberclone.activities.RequestDriverActivity
 import com.example.rideruberclone.callbacks.FirebaseDriverInfoListener
 import com.example.rideruberclone.callbacks.FirebaseFailedListener
 import com.example.rideruberclone.databinding.FragmentHomeBinding
@@ -34,6 +36,7 @@ import com.example.rideruberclone.models.AnimationModel
 import com.example.rideruberclone.models.DriverGeoModel
 import com.example.rideruberclone.models.DriverInfoModel
 import com.example.rideruberclone.models.GeoQueryModel
+import com.example.rideruberclone.models.SelectedPlaceEvent
 import com.firebase.geofire.GeoFire
 import com.firebase.geofire.GeoLocation
 import com.firebase.geofire.GeoQuery
@@ -73,6 +76,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import org.greenrobot.eventbus.EventBus
 import org.json.JSONObject
 import java.io.IOException
 import java.util.Arrays
@@ -243,8 +247,30 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
                 Snackbar.make(requireView(), p0.statusMessage!!, Snackbar.LENGTH_LONG).show()
             }
 
-            override fun onPlaceSelected(p0: Place) {
-                Snackbar.make(requireView(), "" + p0.latLng!!, Snackbar.LENGTH_LONG).show()
+            override fun onPlaceSelected(destinationLocation: Place) {
+               // Snackbar.make(requireView(), "" + p0.latLng!!, Snackbar.LENGTH_LONG).show()
+                if (ActivityCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    Snackbar.make(requireView(), getString(R.string.permission_required), Snackbar.LENGTH_LONG).show()
+                    return
+                }
+                fusedLocationProviderClient.lastLocation
+                    .addOnSuccessListener { location ->
+                        val origin = LatLng(location.latitude, location.longitude)
+                        val destination = LatLng(destinationLocation.latLng!!.latitude,
+                        destinationLocation.latLng!!.longitude)
+
+                        startActivity(Intent(requireContext(),RequestDriverActivity::class.java))
+
+                        EventBus.getDefault().postSticky(SelectedPlaceEvent(origin,destination))
+                    }
+
             }
 
         })
@@ -515,26 +541,9 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
     override fun onDriverInfoLoadSuccess(driverGeoModel: DriverGeoModel?) {
         //if we already have marker with this key, don't set it again
         if (!Constants.markerList.containsKey(driverGeoModel?.key)) {
-            Constants.markerList[driverGeoModel!!.key!!] = mMap.addMarker(
-                MarkerOptions()
-                    .position(
-                        LatLng(
-                            driverGeoModel.geoLocation!!.latitude,
-                            driverGeoModel.geoLocation!!.longitude
-                        )
-                    )
-                    .flat(true)
-                    .title(
-                        Constants.buildName(
-                            driverGeoModel.driverInfoModel!!.firstName!!,
-                            driverGeoModel.driverInfoModel!!.lastName!!
-                        )
-                    )
-                    .snippet(driverGeoModel.driverInfoModel!!.phoneNumber)
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.car))
-            )!!
+            addMarker(driverGeoModel!!)
         } else {
-            Toast.makeText(requireContext(), "Error", Toast.LENGTH_SHORT).show()
+           addMarker(driverGeoModel!!)
         }
 
 
@@ -543,7 +552,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
             val driverLocation = FirebaseDatabase.getInstance()
                 .getReference(Constants.DRIVERS_LOCATION_REFERENCE)
                 .child(cityName)
-                .child(driverGeoModel?.key!!)
+                .child(driverGeoModel.key!!)
             driverLocation.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!snapshot.hasChildren()) {
@@ -681,5 +690,26 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
 
     override fun onFirebaseFailed(message: String) {
 
+    }
+
+    private fun addMarker(driverGeoModel: DriverGeoModel) {
+        Constants.markerList[driverGeoModel.key!!] = mMap.addMarker(
+            MarkerOptions()
+                .position(
+                    LatLng(
+                        driverGeoModel.geoLocation!!.latitude,
+                        driverGeoModel.geoLocation!!.longitude
+                    )
+                )
+                .flat(true)
+                .title(
+                    Constants.buildName(
+                        driverGeoModel.driverInfoModel!!.firstName!!,
+                        driverGeoModel.driverInfoModel!!.lastName!!
+                    )
+                )
+                .snippet(driverGeoModel.driverInfoModel!!.phoneNumber)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.car))
+        )!!
     }
 }
