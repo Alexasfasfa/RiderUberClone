@@ -167,8 +167,14 @@ object Constants {
         }
     }
 
-    fun formatAddress(startAddress: String): CharSequence {
-        val firstIndexCommma = startAddress.indexOf(" ")
-        return startAddress.substring(0,firstIndexCommma)
+    fun formatAddress(address: String): String {
+        val commaIndex = address.indexOf(',')
+        val secondCommaIndex = address.indexOf(',', commaIndex + 1)
+
+        if (commaIndex != -1) {
+            return address.substring(commaIndex + 1, secondCommaIndex).trim()
+        }
+
+        return address
     }
 }
