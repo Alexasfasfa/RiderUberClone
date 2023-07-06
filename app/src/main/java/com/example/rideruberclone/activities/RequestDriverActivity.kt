@@ -1,40 +1,38 @@
 package com.example.rideruberclone.activities
 
-import android.Manifest
 import android.animation.ValueAnimator
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import androidx.core.app.ActivityCompat
+import android.view.View
+import android.view.animation.LinearInterpolator
+import android.widget.Button
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.example.rideruberclone.Constants
 import com.example.rideruberclone.R
 import com.example.rideruberclone.Remote.GoogleAPI
 import com.example.rideruberclone.Remote.RetrofitClient
-
+import com.example.rideruberclone.databinding.ActivityRequestDriverBinding
+import com.example.rideruberclone.models.SelectedPlaceEvent
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
-import com.example.rideruberclone.databinding.*
-import com.example.rideruberclone.models.SelectedPlaceEvent
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.PolygonOptions
-import com.google.android.gms.maps.model.Polyline
-import com.google.android.gms.maps.model.PolylineOptions
-import android.view.View
-import android.view.animation.LinearInterpolator
-import android.widget.RelativeLayout
-import android.widget.TextView
-import com.example.rideruberclone.Constants
-import com.google.android.gms.maps.MapFragment
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Circle
+import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.JointType
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.SquareCap
 import com.google.android.material.snackbar.Snackbar
 import com.google.maps.android.ui.IconGenerator
@@ -47,15 +45,25 @@ import org.greenrobot.eventbus.ThreadMode
 import org.json.JSONObject
 
 class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
+    //Spinning animation
+    private var animator: ValueAnimator? = null
+    private val DESIRED_NUM_OF_SPINS = 5
+    private val DESIRED_SECONDS_PER_ONE_FULL_360_SPIN = 40
+
+    //Effect
+    private var lastUserCircle: Circle? = null
+    private val duration = 1000
+    private var lastPulseAnimator: ValueAnimator? = null
 
     private lateinit var mMap: GoogleMap
     private lateinit var mapFragment: SupportMapFragment
     private lateinit var binding: ActivityRequestDriverBinding
 
     private var selectedPlaceEvent: SelectedPlaceEvent? = null
+    private lateinit var text_origin: TextView
+    private lateinit var text_address_pickup: TextView
 
     //Routes
-
     private val compositeDisposable = CompositeDisposable()
     private lateinit var googleAPI: GoogleAPI
     private var blackPolyLine: Polyline? = null
@@ -88,6 +96,11 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
         selectedPlaceEvent = event
     }
 
+    override fun onDestroy() {
+        if (animator != null) animator!!.end()
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -99,6 +112,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
     }
 
     /**
@@ -113,41 +127,25 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-
-            return
-        }
-        mMap.isMyLocationEnabled=true
-        mMap.uiSettings.isMyLocationButtonEnabled = true
-        mMap.setOnMyLocationClickListener {
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(selectedPlaceEvent!!.origin, 18f))
-        }
 
         drawPath(selectedPlaceEvent!!)
-        //Layout button
-        val locationButton = (findViewById<View>("1".toInt()).parent as View)
-            .findViewById<View>("2".toInt())
-        val params = locationButton.layoutParams as RelativeLayout.LayoutParams
-        params.addRule(RelativeLayout.ALIGN_PARENT_TOP,0)
-        params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM,RelativeLayout.TRUE)
-        params.bottomMargin = 250 // Move to see room control
 
-        mMap.uiSettings.isZoomControlsEnabled = true
         try {
-            val success = googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this,
-            R.raw.uber_maps_style))
+            val success = googleMap.setMapStyle(
+                MapStyleOptions.loadRawResourceStyle(
+                    this,
+                    R.raw.uber_maps_style
+                )
+            )
             if (!success) {
-                Snackbar.make(mapFragment.requireView(),"Error while loading the map style",Snackbar.LENGTH_LONG).show()
+                Snackbar.make(
+                    mapFragment.requireView(),
+                    "Error while loading the map style",
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
         } catch (e: Exception) {
-            Snackbar.make(mapFragment.requireView(),e.message!!,Snackbar.LENGTH_LONG).show()
+            Snackbar.make(mapFragment.requireView(), e.message!!, Snackbar.LENGTH_LONG).show()
         }
 
     }
@@ -177,7 +175,7 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
                     polylineOptions = PolylineOptions()
                     polylineOptions!!.color(Color.GRAY)
                     polylineOptions!!.width(12f)
-                    polylineOptions!! .startCap(SquareCap())
+                    polylineOptions!!.startCap(SquareCap())
                     polylineOptions!!.jointType(JointType.ROUND)
                     polylineOptions!!.addAll(polylineList!!)
                     greyPolyLine = mMap.addPolyline(polylineOptions!!)
@@ -185,13 +183,13 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
                     blackPolyLineOptions = PolylineOptions()
                     blackPolyLineOptions!!.color(Color.BLACK)
                     blackPolyLineOptions!!.width(5f)
-                    blackPolyLineOptions!! .startCap(SquareCap())
+                    blackPolyLineOptions!!.startCap(SquareCap())
                     blackPolyLineOptions!!.jointType(JointType.ROUND)
                     blackPolyLineOptions!!.addAll(polylineList!!)
                     blackPolyLine = mMap.addPolyline(blackPolyLineOptions!!)
 
                     //Animator
-                    val valueAnimator = ValueAnimator.ofInt(0,100)
+                    val valueAnimator = ValueAnimator.ofInt(0, 100)
                     valueAnimator.duration = 1100
                     valueAnimator.repeatCount = ValueAnimator.INFINITE
                     valueAnimator.interpolator = LinearInterpolator()
@@ -199,8 +197,8 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
                         val points = greyPolyLine!!.points
                         val percentValue = valueAnimator.animatedValue.toString().toInt()
                         val size = points.size
-                        val newPoints = (size * (percentValue/100f)).toInt()
-                        val p = points.subList(0,newPoints)
+                        val newPoints = (size * (percentValue / 100f)).toInt()
+                        val p = points.subList(0, newPoints)
                         blackPolyLine!!.points = p
                     }
                     valueAnimator.start()
@@ -219,21 +217,22 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
                     val start_address = legsObject.getString("start_address")
                     val end_address = legsObject.getString("end_address")
 
-                    addOriginMarker(duration,start_address)
+                    addOriginMarker(duration, start_address)
                     addDestinationMarker(end_address)
 
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(latLngBound,160))
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(latLngBound, 160))
                     mMap.moveCamera(CameraUpdateFactory.zoomTo(mMap.cameraPosition.zoom - 1))
 
                 } catch (e: Exception) {
-                    Snackbar.make(mapFragment.requireView(), e.message!!, Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(mapFragment.requireView(), e.message!!, Snackbar.LENGTH_LONG)
+                        .show()
                 }
             }
         )
     }
 
     private fun addDestinationMarker(endAddress: String) {
-        val view = layoutInflater.inflate(R.layout.destination_info_window,null, false)
+        val view = layoutInflater.inflate(R.layout.destination_info_window, null, false)
 
         val text_destination = view.findViewById<View>(R.id.text_destination) as TextView
         text_destination.text = Constants.formatAddress(endAddress)
@@ -243,16 +242,18 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
         generator.setBackground(ColorDrawable(Color.TRANSPARENT))
         val icon = generator.makeIcon()
 
-        destinationMarker = mMap.addMarker(MarkerOptions().icon(BitmapDescriptorFactory.fromBitmap(icon))
-            .position(selectedPlaceEvent!!.destination))
+        destinationMarker = mMap.addMarker(
+            MarkerOptions().icon(BitmapDescriptorFactory.fromBitmap(icon))
+                .position(selectedPlaceEvent!!.destination)
+        )
 
     }
 
     private fun addOriginMarker(duration: String, startAddress: String) {
 
-        val view = layoutInflater.inflate(R.layout.origin_info_window,null, false)
+        val view = layoutInflater.inflate(R.layout.origin_info_window, null, false)
         val text_time = view.findViewById<View>(R.id.text_time) as TextView
-        val text_origin = view.findViewById<View>(R.id.text_origin) as TextView
+        text_origin = view.findViewById<View>(R.id.text_origin) as TextView
 
         text_time.text = Constants.formatDuration(duration)
         text_origin.text = Constants.formatAddress(startAddress)
@@ -262,13 +263,111 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
         generator.setBackground(ColorDrawable(Color.TRANSPARENT))
         val icon = generator.makeIcon()
 
-        originMarker = mMap.addMarker(MarkerOptions().icon(BitmapDescriptorFactory.fromBitmap(icon))
-            .position(selectedPlaceEvent!!.origin))
+        originMarker = mMap.addMarker(
+            MarkerOptions().icon(BitmapDescriptorFactory.fromBitmap(icon))
+                .position(selectedPlaceEvent!!.origin)
+        )
 
     }
 
     private fun init() {
         googleAPI = RetrofitClient.instance!!.create(GoogleAPI::class.java)
 
+        findViewById<Button>(R.id.button_confirm_uber)
+            .setOnClickListener {
+                text_address_pickup = findViewById<View>(R.id.confirm_pickup_layout)
+                    .findViewById<TextView>(R.id.text_view_address_pickup)
+                findViewById<View>(R.id.confirm_pickup_layout).visibility = View.VISIBLE
+                findViewById<View>(R.id.confirm_uber_layout).visibility = View.GONE
+                setDataPickup()
+            }
+
+        findViewById<Button>(R.id.btn_confirm_pickup)
+            .setOnClickListener {
+                if (mMap == null) return@setOnClickListener
+                if (selectedPlaceEvent == null) return@setOnClickListener
+
+                mMap.clear()
+
+                //Tilt
+                val cameraPos = CameraPosition.Builder().target(selectedPlaceEvent!!.origin)
+                    .tilt(45f)
+                    .zoom(16f)
+                    .build()
+
+                mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPos))
+
+                //Start animation
+                addMarkerWithPulseAnimation()
+            }
+    }
+
+    private fun addMarkerWithPulseAnimation() {
+        findViewById<View>(R.id.confirm_pickup_layout).visibility = View.GONE
+        findViewById<View>(R.id.fill_maps).visibility = View.VISIBLE
+        findViewById<View>(R.id.fiding_your_rider_layout).visibility = View.VISIBLE
+
+        originMarker = mMap.addMarker(MarkerOptions().icon(BitmapDescriptorFactory.defaultMarker())
+            .position(selectedPlaceEvent!!.origin))
+
+        addPulsatingEffect(selectedPlaceEvent!!.origin)
+
+    }
+
+    private fun addPulsatingEffect(origin: LatLng) {
+        if (lastPulseAnimator != null) lastPulseAnimator!!.cancel()
+        if (lastUserCircle != null) lastUserCircle!!.center = origin
+        lastPulseAnimator = Constants.valueAnimate(duration.toLong()) { animation ->
+            if (lastUserCircle != null) lastUserCircle!!.radius = animation.animatedValue.toString().toDouble() else {
+                lastUserCircle = mMap.addCircle(CircleOptions()
+                    .center(origin)
+                    .radius(animation.animatedValue.toString().toDouble())
+                    .strokeColor(Color.WHITE)
+                    .fillColor(ContextCompat.getColor(this@RequestDriverActivity,R.color.map_darker)))
+            }
+        }
+
+        //Start rotating camera
+        startMaoCameraSpinningAnimation(mMap.cameraPosition.target)
+
+    }
+
+    private fun startMaoCameraSpinningAnimation(target: LatLng) {
+        if (animator != null) animator?.cancel()
+        animator = ValueAnimator.ofFloat(0f, (DESIRED_NUM_OF_SPINS*360.toFloat()))
+        animator!!.duration = (DESIRED_SECONDS_PER_ONE_FULL_360_SPIN*1000).toLong()
+        animator!!.interpolator = LinearInterpolator()
+        animator!!.startDelay = 100
+        animator!!.addUpdateListener { valueAnimator ->
+            val newBearingValue = valueAnimator.animatedValue as Float
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder()
+                .target(target)
+                .zoom(16f)
+                .tilt(45f)
+                .bearing(newBearingValue)
+                .build()))
+        }
+
+        animator!!.start()
+    }
+
+    private fun setDataPickup() {
+        text_address_pickup.text = if (text_origin != null) text_origin.text else "None"
+        mMap.clear()
+        addPickupMarker()
+    }
+
+    private fun addPickupMarker() {
+        val view = layoutInflater.inflate(R.layout.pickup_info_window, null, false)
+
+        val generator = IconGenerator(this)
+        generator.setContentView(view)
+        generator.setBackground(ColorDrawable(Color.TRANSPARENT))
+        val icon = generator.makeIcon()
+        originMarker = mMap.addMarker(
+            MarkerOptions()
+                .icon(BitmapDescriptorFactory.fromBitmap(icon))
+                .position(selectedPlaceEvent!!.origin)
+        )
     }
 }

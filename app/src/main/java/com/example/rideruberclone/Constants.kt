@@ -1,5 +1,7 @@
 package com.example.rideruberclone
 
+import android.animation.ValueAnimator
+import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -176,5 +178,16 @@ object Constants {
         }
 
         return address
+    }
+
+    fun valueAnimate(duration: Long, listener: AnimatorUpdateListener?): ValueAnimator {
+        val va = ValueAnimator.ofFloat(0f,100f)
+        va.duration = duration
+        va.addUpdateListener(listener)
+        va.repeatCount = ValueAnimator.INFINITE
+        va.repeatMode = ValueAnimator.RESTART
+        va.start()
+
+        return va
     }
 }

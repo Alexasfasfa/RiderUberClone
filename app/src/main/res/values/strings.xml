@@ -28,4 +28,9 @@
     <string name="choose_place">Choose a saved place</string>
     <string name="city_name_not_found">City not found</string>
     <string name="title_activity_request_driver">RequestDriverActivity</string>
+    <string name="pay_by_cash">Pay by Cash</string>
+    <string name="confirm_uber">Confirm Uber</string>
+    <string name="confirm_pickup">Confirm pickup</string>
+    <string name="meet_driver_here">Meet driver here</string>
+    <string name="fiding_your_rider">Finding your ride</string>
 </resources>
