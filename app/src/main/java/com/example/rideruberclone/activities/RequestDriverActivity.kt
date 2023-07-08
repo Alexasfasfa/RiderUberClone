@@ -3,6 +3,7 @@ package com.example.rideruberclone.activities
 import android.animation.ValueAnimator
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -17,6 +18,7 @@ import com.example.rideruberclone.Remote.GoogleAPI
 import com.example.rideruberclone.Remote.RetrofitClient
 import com.example.rideruberclone.databinding.ActivityRequestDriverBinding
 import com.example.rideruberclone.models.SelectedPlaceEvent
+import com.example.rideruberclone.utils.UserUtils
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -43,6 +45,7 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import org.json.JSONObject
+import java.lang.StringBuilder
 
 class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
     //Spinning animation
@@ -307,8 +310,10 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
         findViewById<View>(R.id.fill_maps).visibility = View.VISIBLE
         findViewById<View>(R.id.fiding_your_rider_layout).visibility = View.VISIBLE
 
-        originMarker = mMap.addMarker(MarkerOptions().icon(BitmapDescriptorFactory.defaultMarker())
-            .position(selectedPlaceEvent!!.origin))
+        originMarker = mMap.addMarker(
+            MarkerOptions().icon(BitmapDescriptorFactory.defaultMarker())
+                .position(selectedPlaceEvent!!.origin)
+        )
 
         addPulsatingEffect(selectedPlaceEvent!!.origin)
 
@@ -318,12 +323,20 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
         if (lastPulseAnimator != null) lastPulseAnimator!!.cancel()
         if (lastUserCircle != null) lastUserCircle!!.center = origin
         lastPulseAnimator = Constants.valueAnimate(duration.toLong()) { animation ->
-            if (lastUserCircle != null) lastUserCircle!!.radius = animation.animatedValue.toString().toDouble() else {
-                lastUserCircle = mMap.addCircle(CircleOptions()
-                    .center(origin)
-                    .radius(animation.animatedValue.toString().toDouble())
-                    .strokeColor(Color.WHITE)
-                    .fillColor(ContextCompat.getColor(this@RequestDriverActivity,R.color.map_darker)))
+            if (lastUserCircle != null) lastUserCircle!!.radius =
+                animation.animatedValue.toString().toDouble() else {
+                lastUserCircle = mMap.addCircle(
+                    CircleOptions()
+                        .center(origin)
+                        .radius(animation.animatedValue.toString().toDouble())
+                        .strokeColor(Color.WHITE)
+                        .fillColor(
+                            ContextCompat.getColor(
+                                this@RequestDriverActivity,
+                                R.color.map_darker
+                            )
+                        )
+                )
             }
         }
 
@@ -334,21 +347,71 @@ class RequestDriverActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun startMaoCameraSpinningAnimation(target: LatLng) {
         if (animator != null) animator?.cancel()
-        animator = ValueAnimator.ofFloat(0f, (DESIRED_NUM_OF_SPINS*360.toFloat()))
-        animator!!.duration = (DESIRED_SECONDS_PER_ONE_FULL_360_SPIN*1000).toLong()
+        animator = ValueAnimator.ofFloat(0f, (DESIRED_NUM_OF_SPINS * 360.toFloat()))
+        animator!!.duration = (DESIRED_SECONDS_PER_ONE_FULL_360_SPIN * 1000).toLong()
         animator!!.interpolator = LinearInterpolator()
         animator!!.startDelay = 100
         animator!!.addUpdateListener { valueAnimator ->
             val newBearingValue = valueAnimator.animatedValue as Float
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder()
-                .target(target)
-                .zoom(16f)
-                .tilt(45f)
-                .bearing(newBearingValue)
-                .build()))
+            mMap.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(target)
+                        .zoom(16f)
+                        .tilt(45f)
+                        .bearing(newBearingValue)
+                        .build()
+                )
+            )
         }
 
         animator!!.start()
+
+        findNearbyDriver(target)
+    }
+
+    private fun findNearbyDriver(target: LatLng) {
+        if (Constants.driversFound.size > 0) {
+            var min = 0f
+            var foundDriver = Constants.driversFound[Constants.driversFound.keys.iterator()
+                .next()] // Default found driver is the frist driver
+
+            val currentRiderLocation = Location("")
+            currentRiderLocation.latitude = target.latitude
+            currentRiderLocation.longitude = target.longitude
+
+            for (key in Constants.driversFound.keys) {
+
+                val driverLocation = Location("")
+                driverLocation.latitude = Constants.driversFound[key]!!.geoLocation!!.latitude
+                driverLocation.longitude = Constants.driversFound[key]!!.geoLocation!!.longitude
+
+                //First, init min value and found driver if first driver is in list
+                if (min == 0f) {
+                    min = driverLocation.distanceTo(currentRiderLocation)
+                    foundDriver = Constants.driversFound[key]
+                } else if (driverLocation.distanceTo(currentRiderLocation) < min) {
+                    min = driverLocation.distanceTo(currentRiderLocation)
+                    foundDriver = Constants.driversFound[key]
+                }
+            }
+//            Snackbar.make(
+//                mapFragment.requireView(), StringBuilder("Found driver: ")
+//                    .append(foundDriver!!.driverInfoModel!!.phoneNumber), Snackbar.LENGTH_LONG
+//            ).show()
+
+            UserUtils.sendRequestToDriver(this@RequestDriverActivity,
+            findViewById<View>(R.id.main_layout),
+            foundDriver,
+            target)
+
+        } else {
+            Snackbar.make(
+                mapFragment.requireView(),
+                getString(R.string.drivers_not_found),
+                Snackbar.LENGTH_LONG
+            ).show()
+        }
     }
 
     private fun setDataPickup() {

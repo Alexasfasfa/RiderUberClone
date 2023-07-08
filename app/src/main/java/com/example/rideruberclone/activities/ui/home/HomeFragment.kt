@@ -403,7 +403,10 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
 
                         geoQuery.addGeoQueryEventListener(object : GeoQueryEventListener {
                             override fun onKeyEntered(key: String?, location: GeoLocation?) {
-                                Constants.driversFound.add(DriverGeoModel(key!!, location!!))
+                                //Constants.driversFound.add(DriverGeoModel(key!!, location!!))
+                                if (!Constants.driversFound.containsKey(key)) {
+                                    Constants.driversFound[key!!] = DriverGeoModel(key, location!!)
+                                }
                             }
 
                             override fun onKeyExited(key: String?) {
@@ -493,11 +496,11 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
 
     private fun addDriverMarker() {
         if (Constants.driversFound.size > 0) {
-            Observable.fromIterable(Constants.driversFound)
+            Observable.fromIterable(Constants.driversFound.keys)
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ driverGeoModel: DriverGeoModel? ->
-                    findDriverByKey(driverGeoModel)
+                .subscribe({ key: String? ->
+                    findDriverByKey(Constants.driversFound[key])
                 },
                     { t: Throwable? ->
                         Snackbar.make(requireView(), t?.message!!, Snackbar.LENGTH_LONG).show()
@@ -523,6 +526,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, FirebaseDriverInfoListener,
                     if (snapshot.hasChildren()) {
                         driverGeoModel.driverInfoModel =
                             (snapshot.getValue(DriverInfoModel::class.java))
+                        Constants.driversFound[driverGeoModel.key]!!.driverInfoModel = (snapshot.getValue(DriverInfoModel::class.java))
                         firebaseDriverInfoListener.onDriverInfoLoadSuccess(driverGeoModel)
                     } else {
                         firebaseFailedListener.onFirebaseFailed(getString(R.string.key_not_found) + driverGeoModel.key)

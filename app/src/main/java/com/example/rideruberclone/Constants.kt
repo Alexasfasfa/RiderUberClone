@@ -22,10 +22,15 @@ import java.util.Calendar
 
 
 object Constants {
+    val RIDER_KEY: String = "RiderKey"
+    val PICKUP_LOCATION: String = "PickIupLocation"
+    val NOTI_BODY: String = "body"
+    val REQUEST_DRIVER_TITLE: String = "RequestDriver"
+    val NOTI_TITLE: String = "title"
     val driversSubscribe: MutableMap<String, AnimationModel> = HashMap()
     val markerList: HashMap<String, Marker> = HashMap()
     val DRIVER_INFO_REFERENCE: String = "DriverInfo"
-    val driversFound: HashSet<DriverGeoModel> = HashSet()
+    val driversFound: HashMap<String,DriverGeoModel> = HashMap()
     val DRIVERS_LOCATION_REFERENCE: String = "DriversLocation"
     val TOKEN_REFERENCE: String = "Token"
     var currentRider: RiderModel? = null

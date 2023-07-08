@@ -33,4 +33,6 @@
     <string name="confirm_pickup">Confirm pickup</string>
     <string name="meet_driver_here">Meet driver here</string>
     <string name="fiding_your_rider">Finding your ride</string>
+    <string name="token_not_found">Token not found</string>
+    <string name="send_request_to_driver_faield">Send request to driver failed</string>
 </resources>

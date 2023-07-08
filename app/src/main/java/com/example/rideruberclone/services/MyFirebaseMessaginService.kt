@@ -17,11 +17,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        Constants.showNotification(
-            this, kotlin.random.Random.nextInt(),
-            message.notification?.title,
-            message.notification?.body,
-            null
-        )
+        if (message != null) {
+            val data = message.data
+            Constants.showNotification(
+                this, kotlin.random.Random.nextInt(),
+                data[Constants.NOTI_TITLE],
+                data[Constants.NOTI_BODY],
+                null
+            )
+        }
     }
 }
